@@ -162,7 +162,7 @@ Realtime Database üzerinde:
 
 Uygulamayı denemek isteyen kullanıcılar için:
 
-🔗 [APK İndir](https://github.com/sumeyyegull/iTravel_Project/releases/download/v1.0/app-debug.apk)
+🔗 [APK İndir](https://github.com/sumeyyegull/iTravel_Project/releases/download/v1.1/app-debug.apk)
 
 Not:
 - Android cihazlarda bilinmeyen kaynaklara izin verilmesi gerekmektedir.
