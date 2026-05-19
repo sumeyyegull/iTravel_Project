@@ -36,7 +36,6 @@
         <activity android:name=".MapActivity" android:exported="false"/>
         <activity android:name=".RouteMapActivity" android:exported="false"/>
         <activity android:name=".CityFinderActivity" android:exported="false"/>
-        <activity android:name=".WeatherActivity" android:exported="false"/>
         <activity android:name=".EditProfileActivity" android:exported="false"/>
         <activity android:name=".ProfileActivity" android:exported="false"/>
         <activity android:name=".ForgetPasswordActivity" android:exported="false"/>
