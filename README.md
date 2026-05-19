@@ -1,6 +1,7 @@
 # iTravel Istanbul App
 
-<img width="2000" height="1200" alt="iTravel Istanbul (1)" src="https://github.com/user-attachments/assets/5efafc53-01f5-436c-bb56-dd5dca55040a" />
+<img width="2000" height="1200" alt="iTravel Istanbul" src="https://github.com/user-attachments/assets/b28a5466-b78c-4526-9f5f-0a5f51239c3c" />
+
 
 iTravel, kullanıcıların İstanbul’daki tarihi, kültürel, doğal ve popüler noktaları keşfetmesini sağlayan modern bir mobil gezi uygulamasıdır.  
 Uygulama; harita tabanlı keşif sistemi, rota oluşturma, kullanıcı yorumları, popüler mekan önerileri ve yönetici paneli gibi birçok özelliği bir arada sunmaktadır.
@@ -37,6 +38,16 @@ Kullanıcılar:
 - popüler kafeleri ve restoranları
   kategori bazlı şekilde keşfedebilir.
 
+# Akıllı Arama Sistemi
+Kategori ekranlarında kullanıcı deneyimini geliştirmek amacıyla arama sistemi eklenmiştir.
+
+Kullanıcılar:
+- mekan adına göre arama yapabilir,
+- kategoriler içerisindeki yerleri hızlıca filtreleyebilir,
+- yazdıkça anlık sonuç görüntüleyebilir.
+
+Arama sonucu bulunamadığında kullanıcıya bilgilendirici mesaj gösterilmektedir.
+
 ## Harita ve Konum Servisleri
 - Google Maps API entegrasyonu
 - Mekanların harita üzerinde görüntülenmesi
@@ -46,9 +57,12 @@ Kullanıcılar:
 
 ## Rota Oluşturma
 Kullanıcı mevcut konumundan seçilen mekana:
-- rota oluşturabilir,
+- gerçek yol rotası oluşturabilir,
 - mesafe bilgisi görüntüleyebilir,
-- tahmini ulaşım süresini görebilir.
+- tahmini ulaşım süresini görebilir,
+- harita üzerinden yol güzergahını takip edebilir.
+
+Rota sistemi gerçek yol verileri kullanılarak geliştirilmiştir.
 
 ## Mekan Detay Sistemi
 Her mekan için:
@@ -92,6 +106,7 @@ Bu bölümde CRUD (Create, Read, Update, Delete) işlemleri aktif olarak kullan�
 - RecyclerView
 - CardView
 - ConstraintLayout
+- OSRM Routing API
 
 ---
 
