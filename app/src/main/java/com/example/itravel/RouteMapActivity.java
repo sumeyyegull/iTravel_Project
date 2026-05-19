@@ -2,8 +2,8 @@ package com.example.itravel;
 
 import android.Manifest;
 import android.graphics.Color;
-import android.location.Location;
 import android.os.Bundle;
+import android.util.Log;
 import android.view.View;
 import android.widget.ProgressBar;
 import android.widget.TextView;
@@ -12,6 +12,10 @@ import android.widget.Toast;
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 
+import com.example.itravel.osrm.OsrmClient;
+import com.example.itravel.osrm.OsrmGeoJsonParser;
+import com.example.itravel.osrm.model.OsrmResponse;
+import com.example.itravel.osrm.model.OsrmRoute;
 import com.google.android.gms.location.FusedLocationProviderClient;
 import com.google.android.gms.location.LocationServices;
 import com.google.android.gms.maps.CameraUpdateFactory;
@@ -32,7 +36,16 @@ import com.karumi.dexter.listener.PermissionGrantedResponse;
 import com.karumi.dexter.listener.PermissionRequest;
 import com.karumi.dexter.listener.single.PermissionListener;
 
+import java.util.List;
+import java.util.Locale;
+
+import retrofit2.Call;
+import retrofit2.Callback;
+import retrofit2.Response;
+
 public class RouteMapActivity extends AppCompatActivity implements OnMapReadyCallback {
+
+    private static final String TAG = "RouteMapActivity";
 
     public static final String EXTRA_DEST_LAT = "dest_lat";
     public static final String EXTRA_DEST_LON = "dest_lon";
@@ -40,13 +53,15 @@ public class RouteMapActivity extends AppCompatActivity implements OnMapReadyCal
 
     private static final LatLng ISTANBUL_CENTER = new LatLng(41.0082, 28.9784);
     private static final float ISTANBUL_ZOOM = 11.5f;
-    private static final double DRIVING_SPEED_KMH = 35.0;
+    private static final int ROUTE_POLYLINE_COLOR = Color.parseColor("#14502E");
+    private static final float ROUTE_POLYLINE_WIDTH = 12f;
 
     private GoogleMap googleMap;
     private FusedLocationProviderClient fusedLocationClient;
     private LatLng userLatLng;
     private LatLng destLatLng;
     private String destTitle;
+    private Call<OsrmResponse> routeCall;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -76,6 +91,14 @@ public class RouteMapActivity extends AppCompatActivity implements OnMapReadyCal
 
         fusedLocationClient = LocationServices.getFusedLocationProviderClient(this);
         requestLocationAndMap();
+    }
+
+    @Override
+    protected void onDestroy() {
+        if (routeCall != null) {
+            routeCall.cancel();
+        }
+        super.onDestroy();
     }
 
     private void requestLocationAndMap() {
@@ -131,12 +154,11 @@ public class RouteMapActivity extends AppCompatActivity implements OnMapReadyCal
                         userLatLng = ISTANBUL_CENTER;
                     }
                     drawRoute();
-                    setLoading(false);
                 })
                 .addOnFailureListener(e -> {
+                    Log.e(TAG, "Failed to get last location", e);
                     userLatLng = ISTANBUL_CENTER;
                     drawRoute();
-                    setLoading(false);
                 });
     }
 
@@ -159,6 +181,7 @@ public class RouteMapActivity extends AppCompatActivity implements OnMapReadyCal
 
     private void drawRoute() {
         if (googleMap == null || userLatLng == null || destLatLng == null) {
+            setLoading(false);
             return;
         }
 
@@ -174,32 +197,120 @@ public class RouteMapActivity extends AppCompatActivity implements OnMapReadyCal
                 .title(destTitle)
                 .icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_GREEN)));
 
-        googleMap.addPolyline(new PolylineOptions()
-                .add(userLatLng, destLatLng)
-                .width(12f)
-                .color(Color.parseColor("#14502E"))
-                .geodesic(true));
+        fetchOsrmRoute();
+    }
 
-        float[] results = new float[1];
-        Location.distanceBetween(
-                userLatLng.latitude, userLatLng.longitude,
-                destLatLng.latitude, destLatLng.longitude,
-                results);
-        double distanceKm = results[0] / 1000.0;
-        int minutes = (int) Math.max(1, Math.round((distanceKm / DRIVING_SPEED_KMH) * 60.0));
+    private void fetchOsrmRoute() {
+        setLoading(true);
+
+        String coordinates = String.format(Locale.US, "%f,%f;%f,%f",
+                userLatLng.longitude, userLatLng.latitude,
+                destLatLng.longitude, destLatLng.latitude);
+
+        if (routeCall != null) {
+            routeCall.cancel();
+        }
+
+        Log.d(TAG, "Requesting OSRM route: " + coordinates);
+
+        routeCall = OsrmClient.getService()
+                .getRoute(coordinates, "full", "geojson");
+
+        routeCall.enqueue(new Callback<OsrmResponse>() {
+            @Override
+            public void onResponse(@NonNull Call<OsrmResponse> call,
+                                   @NonNull Response<OsrmResponse> response) {
+                setLoading(false);
+                if (!response.isSuccessful() || response.body() == null) {
+                    Log.e(TAG, "OSRM HTTP error: code=" + response.code()
+                            + " message=" + response.message());
+                    onRouteFailed("HTTP " + response.code());
+                    return;
+                }
+
+                OsrmResponse body = response.body();
+                if (!"Ok".equalsIgnoreCase(body.code)
+                        || body.routes == null
+                        || body.routes.isEmpty()) {
+                    String apiMessage = body.message != null ? body.message : "unknown";
+                    Log.e(TAG, "OSRM code=" + body.code + " message=" + apiMessage);
+                    onRouteFailed(body.code);
+                    return;
+                }
+
+                Log.d(TAG, "OSRM route received, drawing polyline");
+                applyOsrmRoute(body.routes.get(0));
+            }
+
+            @Override
+            public void onFailure(@NonNull Call<OsrmResponse> call, @NonNull Throwable t) {
+                if (call.isCanceled()) {
+                    return;
+                }
+                setLoading(false);
+                Log.e(TAG, "OSRM network failure", t);
+                onRouteFailed(t.getMessage());
+            }
+        });
+    }
+
+    private void applyOsrmRoute(OsrmRoute route) {
+        if (route.geometry == null) {
+            Log.e(TAG, "OSRM route missing geometry");
+            onRouteFailed("missing geometry");
+            return;
+        }
+
+        List<LatLng> path = OsrmGeoJsonParser.toLatLngPath(route.geometry);
+        if (path.isEmpty()) {
+            Log.e(TAG, "OSRM GeoJSON coordinates are empty");
+            onRouteFailed("empty coordinates");
+            return;
+        }
+
+        double distanceKm = route.distance / 1000.0;
+        int minutes = (int) Math.max(1, Math.round(route.duration / 60.0));
 
         TextView distanceTv = findViewById(R.id.route_distance);
         TextView durationTv = findViewById(R.id.route_duration);
         distanceTv.setText(getString(R.string.route_distance, distanceKm));
         durationTv.setText(getString(R.string.route_duration, minutes));
 
+        Log.d(TAG, "Polyline points=" + path.size()
+                + " distanceKm=" + distanceKm
+                + " durationMin=" + minutes);
+
+        googleMap.addPolyline(new PolylineOptions()
+                .addAll(path)
+                .width(ROUTE_POLYLINE_WIDTH)
+                .color(ROUTE_POLYLINE_COLOR));
+
+        LatLngBounds.Builder boundsBuilder = new LatLngBounds.Builder();
+        for (LatLng point : path) {
+            boundsBuilder.include(point);
+        }
+        fitCamera(boundsBuilder.build());
+    }
+
+    private void onRouteFailed(String reason) {
+        Log.w(TAG, "Showing map without route polyline. reason=" + reason);
+        Toast.makeText(this, R.string.route_directions_error, Toast.LENGTH_SHORT).show();
+        fitCameraToEndpoints();
+    }
+
+    private void fitCameraToEndpoints() {
         LatLngBounds bounds = new LatLngBounds.Builder()
                 .include(userLatLng)
                 .include(destLatLng)
                 .build();
+        fitCamera(bounds);
+    }
+
+    private void fitCamera(LatLngBounds bounds) {
         try {
             googleMap.animateCamera(CameraUpdateFactory.newLatLngBounds(bounds, dp(48)));
         } catch (Exception e) {
+            Log.w(TAG, "LatLngBounds camera failed, using default zoom", e);
             googleMap.animateCamera(CameraUpdateFactory.newLatLngZoom(ISTANBUL_CENTER, ISTANBUL_ZOOM));
         }
     }

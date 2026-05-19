@@ -87,6 +87,7 @@
     <string name="route_location_loading">Konumunuz alınıyor…</string>
     <string name="route_location_denied">Konum izni gerekli. Ayarlardan izin verin.</string>
     <string name="route_invalid_destination">Hedef konum geçersiz.</string>
+    <string name="route_directions_error">Rota alınamadı. Lütfen tekrar deneyin.</string>
     <string name="route_you">Konumunuz</string>
     <string name="route_destination">Hedef</string>
     <string name="route_best_transport">En İyi Ulaşım Türü</string>
@@ -107,6 +108,8 @@
     <string name="place_rating_format">★ %.1f</string>
     <string name="place_rating_none">Henüz puan yok</string>
     <string name="places_empty_category">Bu kategoride henüz mekân eklenmemiş.</string>
+    <string name="places_search_hint">Mekan ara…</string>
+    <string name="places_search_no_results">Sonuç bulunamadı</string>
     <string name="map_title">Harita</string>
     <string name="explore">Keşfet</string>
     <string name="nav_discover">Keşfet</string>

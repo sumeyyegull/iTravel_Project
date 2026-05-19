@@ -15,14 +15,25 @@ import com.example.itravel.Model.Place;
 import com.example.itravel.Model.PlaceCategory;
 import com.example.itravel.R;
 
+import java.util.ArrayList;
 import java.util.List;
 
 public class PlaceAdapter extends RecyclerView.Adapter<PlaceAdapter.VH> {
 
     private final List<Place> placeData;
 
+    public PlaceAdapter() {
+        this.placeData = new ArrayList<>();
+    }
+
     public PlaceAdapter(@NonNull List<Place> placeData) {
-        this.placeData = placeData;
+        this.placeData = new ArrayList<>(placeData);
+    }
+
+    public void submitList(@NonNull List<Place> places) {
+        placeData.clear();
+        placeData.addAll(places);
+        notifyDataSetChanged();
     }
 
     @NonNull

@@ -1,18 +1,22 @@
 package com.example.itravel;
 
 import android.os.Bundle;
+import android.text.TextUtils;
 import android.view.View;
 import android.widget.TextView;
 
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.appcompat.widget.SearchView;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.example.itravel.Adapter.PlaceAdapter;
 import com.example.itravel.Model.Place;
 import com.example.itravel.Model.PlaceCategory;
+import com.example.itravel.ui.PlaceSearchBarHelper;
 import com.example.itravel.util.PlaceFilter;
+import com.example.itravel.util.PlaceSearchUtils;
 import com.google.android.material.appbar.MaterialToolbar;
 import com.google.firebase.database.DataSnapshot;
 import com.google.firebase.database.DatabaseError;
@@ -32,6 +36,8 @@ public class CategoryPlacesActivity extends AppCompatActivity {
     private ValueEventListener placesListener;
     private PlaceAdapter adapter;
     private TextView emptyView;
+    private final List<Place> categoryPlaces = new ArrayList<>();
+    private String searchQuery = "";
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -56,10 +62,16 @@ public class CategoryPlacesActivity extends AppCompatActivity {
             return false;
         });
 
+        SearchView searchView = findViewById(R.id.search_places);
+        PlaceSearchBarHelper.bind(searchView, query -> {
+            searchQuery = query;
+            applySearchAndUpdateUi();
+        });
+
         RecyclerView rv = findViewById(R.id.rv_places);
         emptyView = findViewById(R.id.empty_places);
         rv.setLayoutManager(new LinearLayoutManager(this));
-        adapter = new PlaceAdapter(new ArrayList<>());
+        adapter = new PlaceAdapter();
         rv.setAdapter(adapter);
 
         placesRef = FirebaseDatabase.getInstance(ItravelApp.FIREBASE_RTDB_URL)
@@ -75,18 +87,37 @@ public class CategoryPlacesActivity extends AppCompatActivity {
                         all.add(p);
                     }
                 }
-                List<Place> filtered = PlaceFilter.byCategory(all, categoryKey);
-                adapter = new PlaceAdapter(filtered);
-                rv.setAdapter(adapter);
-                emptyView.setVisibility(filtered.isEmpty() ? View.VISIBLE : View.GONE);
+                categoryPlaces.clear();
+                categoryPlaces.addAll(PlaceFilter.byCategory(all, categoryKey));
+                applySearchAndUpdateUi();
             }
 
             @Override
             public void onCancelled(@NonNull DatabaseError error) {
-                emptyView.setVisibility(View.VISIBLE);
+                categoryPlaces.clear();
+                applySearchAndUpdateUi();
             }
         };
         placesRef.addValueEventListener(placesListener);
+    }
+
+    private void applySearchAndUpdateUi() {
+        List<Place> visible = PlaceSearchUtils.filterByName(categoryPlaces, searchQuery);
+        adapter.submitList(visible);
+        updateEmptyState(visible);
+    }
+
+    private void updateEmptyState(@NonNull List<Place> visible) {
+        if (visible.isEmpty()) {
+            emptyView.setVisibility(View.VISIBLE);
+            if (!TextUtils.isEmpty(searchQuery.trim())) {
+                emptyView.setText(R.string.places_search_no_results);
+            } else {
+                emptyView.setText(R.string.places_empty_category);
+            }
+        } else {
+            emptyView.setVisibility(View.GONE);
+        }
     }
 
     @Override
