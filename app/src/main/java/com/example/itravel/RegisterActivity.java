@@ -135,7 +135,7 @@ public class RegisterActivity extends AppCompatActivity {
                         firebaseUser.updateProfile(
                                 new UserProfileChangeRequest.Builder().setDisplayName(username).build());
 
-                        User user = new User(username, email, "", "default");
+                        User user = new User(username, email, "default");
                         FirebaseDatabase.getInstance(ItravelApp.FIREBASE_RTDB_URL).getReference("Users")
                                 .child(firebaseUser.getUid())
                                 .setValue(user)
